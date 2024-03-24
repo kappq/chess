@@ -3,22 +3,8 @@ import gleam/int.{
 }
 import gleam/option.{type Option, None, Some}
 import square.{type Square}
-
-const north: Int = 8
-
-const south: Int = -8
-
-const east: Int = 1
-
-const north_east: Int = 9
-
-const south_east: Int = -7
-
-const west: Int = -1
-
-const north_west: Int = 7
-
-const south_west: Int = -9
+import move.{type Move, Move}
+import gleam/list
 
 const not_a_file: Bitboard = 0xfefefefefefefefe
 
@@ -28,50 +14,16 @@ const not_h_file: Bitboard = 0x7f7f7f7f7f7f7f7f
 pub type Bitboard =
   Int
 
-pub fn north_one(bitboard: Bitboard) {
+pub fn bitboard_not(bitboard: Bitboard) -> Bitboard {
   bitboard
-  |> bitwise_shift_left(north)
+  |> bitwise_not()
+  |> bitwise_and(0xffffffffffffffff)
 }
 
-pub fn south_one(bitboard: Bitboard) {
+pub fn get_bit(bitboard: Bitboard, square: Square) -> Int {
   bitboard
-  |> bitwise_shift_right(south)
-}
-
-pub fn east_one(bitboard: Bitboard) -> Bitboard {
-  bitboard
-  |> bitwise_shift_left(east)
-  |> bitwise_and(not_a_file)
-}
-
-pub fn north_east_one(bitboard: Bitboard) -> Bitboard {
-  bitboard
-  |> bitwise_shift_left(north_east)
-  |> bitwise_and(not_a_file)
-}
-
-pub fn south_east_one(bitboard: Bitboard) -> Bitboard {
-  bitboard
-  |> bitwise_shift_right(south_east)
-  |> bitwise_and(not_a_file)
-}
-
-pub fn west_one(bitboard: Bitboard) -> Bitboard {
-  bitboard
-  |> bitwise_shift_right(west)
-  |> bitwise_and(not_h_file)
-}
-
-pub fn north_west_one(bitboard: Bitboard) -> Bitboard {
-  bitboard
-  |> bitwise_shift_left(north_west)
-  |> bitwise_and(not_h_file)
-}
-
-pub fn south_west_one(bitboard: Bitboard) -> Bitboard {
-  bitboard
-  |> bitwise_shift_right(south_west)
-  |> bitwise_and(not_h_file)
+  |> bitwise_shift_right(square)
+  |> bitwise_and(1)
 }
 
 pub fn pop_bit(bitboard: Bitboard, square: Square) -> Bitboard {
@@ -81,19 +33,79 @@ pub fn pop_bit(bitboard: Bitboard, square: Square) -> Bitboard {
   |> bitwise_and(bitboard)
 }
 
-pub fn pop_ls1b(bitboard: Bitboard) -> Option(Square) {
-  pop_ls1b_loop(bitboard, 0)
+pub fn get_lsb(bitboard: Bitboard) -> Option(Square) {
+  case bitboard, get_bit(bitboard, 0) {
+    0, _ -> None
+    _, 1 -> Some(0)
+    _, 0 -> {
+      let bitboard = bitwise_shift_right(bitboard, 1)
+      get_lsb(bitboard)
+      |> option.map(fn(square) { square + 1 })
+    }
+    _, _ -> panic as "A bit can only be 0 or 1"
+  }
 }
 
-fn pop_ls1b_loop(bitboard: Bitboard, square: Square) -> Option(Square) {
-  let lsb = bitwise_and(bitboard, 1)
-  case bitboard {
-    0 -> None
-    _ if lsb == 1 -> Some(square)
-    _ -> {
-      let bitboard = bitwise_shift_right(bitboard, 1)
-      let square = square + 1
-      pop_ls1b_loop(bitboard, square)
+/// Parse moves accepts a bitboard which represents all the target squares
+/// and an offset which represents the movement that it took to get there.
+pub fn parse_moves(bitboard: Bitboard, offset: Int) -> List(Move) {
+  bitboard
+  |> get_ones()
+  |> list.map(fn(square) { Move(square - offset, square) })
+}
+
+fn get_ones(bitboard: Bitboard) -> List(Square) {
+  case get_lsb(bitboard) {
+    None -> []
+    Some(square) -> {
+      let bitboard = pop_bit(bitboard, square)
+      [square, ..get_ones(bitboard)]
     }
   }
+}
+
+pub fn north_one(bitboard: Bitboard) {
+  bitboard
+  |> bitwise_shift_left(8)
+}
+
+pub fn south_one(bitboard: Bitboard) {
+  bitboard
+  |> bitwise_shift_right(8)
+}
+
+pub fn east_one(bitboard: Bitboard) -> Bitboard {
+  bitboard
+  |> bitwise_shift_left(1)
+  |> bitwise_and(not_a_file)
+}
+
+pub fn north_east_one(bitboard: Bitboard) -> Bitboard {
+  bitboard
+  |> bitwise_shift_left(9)
+  |> bitwise_and(not_a_file)
+}
+
+pub fn south_east_one(bitboard: Bitboard) -> Bitboard {
+  bitboard
+  |> bitwise_shift_right(7)
+  |> bitwise_and(not_a_file)
+}
+
+pub fn west_one(bitboard: Bitboard) -> Bitboard {
+  bitboard
+  |> bitwise_shift_right(1)
+  |> bitwise_and(not_h_file)
+}
+
+pub fn north_west_one(bitboard: Bitboard) -> Bitboard {
+  bitboard
+  |> bitwise_shift_left(7)
+  |> bitwise_and(not_h_file)
+}
+
+pub fn south_west_one(bitboard: Bitboard) -> Bitboard {
+  bitboard
+  |> bitwise_shift_right(9)
+  |> bitwise_and(not_h_file)
 }

@@ -1,8 +1,7 @@
 import gleam/dict
 import gleam/int.{bitwise_and}
 import gleam/list
-import gleam/option.{None, Some}
-import bitboard.{type Bitboard, north_one, pop_ls1b, south_one}
+import bitboard.{type Bitboard, north_one, parse_moves, south_one}
 import board.{type Board, get_empty}
 import color.{Black, White}
 import move.{type Move, Move}
@@ -18,27 +17,9 @@ const rank4 = 0x00000000FF000000
 
 const rank5 = 0x000000FF00000000
 
-pub fn parse_moves(to_bitboard: Bitboard, movement: Int) -> List(Move) {
-  parse_moves_loop(to_bitboard, movement, [])
-}
-
-fn parse_moves_loop(
-  to_bitboard: Bitboard,
-  movement: Int,
-  moves: List(Move),
-) -> List(Move) {
-  case pop_ls1b(to_bitboard) {
-    None -> []
-    Some(square) -> {
-      let moves = [Move(square - movement, square), ..moves]
-      parse_moves_loop(to_bitboard, movement, moves)
-      |> list.append(moves)
-    }
-  }
-}
-
 pub fn generate_moves(board: Board) -> List(Move) {
   board.pieces
+  |> dict.filter(fn(piece, _) { piece.color == board.side_to_move })
   |> dict.to_list()
   |> list.flat_map(fn(entry) {
     let #(piece, bitboard) = entry

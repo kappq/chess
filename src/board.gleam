@@ -1,23 +1,30 @@
 import gleam/dict.{type Dict}
-import gleam/int.{bitwise_and, bitwise_not, bitwise_or}
+import gleam/int.{bitwise_or}
 import gleam/list
-import bitboard.{type Bitboard}
+import bitboard.{type Bitboard, bitboard_not}
 import color.{type Color, Black, White}
 import piece.{type Piece, Piece}
+import piece_type.{Pawn}
 
 pub type Board {
-  Board(pieces: Dict(Piece, Bitboard))
+  Board(pieces: Dict(Piece, Bitboard), side_to_move: Color)
 }
 
 pub fn create_board() -> Board {
-  Board(dict.new())
+  let pieces =
+    dict.new()
+    |> dict.insert(Piece(White, Pawn), 0x20000000080400)
+    |> dict.insert(Piece(Black, Pawn), 0x8000000000000)
+  let side_to_move = White
+
+  Board(pieces, side_to_move)
 }
 
 pub fn get_color_occupied(board: Board, color: Color) -> Bitboard {
   board.pieces
   |> dict.filter(fn(piece, _) { piece.color == color })
   |> dict.values()
-  |> list.fold(0, fn(empty, bitboard) { bitwise_and(empty, bitboard) })
+  |> list.fold(0, fn(occupied, bitboard) { bitwise_or(occupied, bitboard) })
 }
 
 pub fn get_occupied(board: Board) -> Bitboard {
@@ -27,6 +34,7 @@ pub fn get_occupied(board: Board) -> Bitboard {
 }
 
 pub fn get_empty(board: Board) -> Bitboard {
-  let occupied = get_occupied(board)
-  bitwise_not(occupied)
+  board
+  |> get_occupied()
+  |> bitboard_not()
 }
